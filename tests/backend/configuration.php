@@ -1,23 +1,31 @@
 <?php
 
 return [
-    'public_path' => '',
-    'public_dir' => __DIR__.'/../../dist',
+    'repository_full_path' => TEST_REPOSITORY,
+    'auth_file' => APP_ROOT_DIR . DIR_SEP . 'private' . DIR_SEP . 'users.json',
+    'routes_file' => APP_ROOT_DIR . DIR_SEP . 'backend' . DIR_SEP . 'routes.config.php',
+    'public_path' => APP_PUBLIC_PATH,
+    'public_dir' => APP_PUBLIC_DIR,
+    'tmpfs_path' => TEST_TMP_PATH,
+    'log_file' => APP_ROOT_DIR . DIR_SEP . 'private' . DIR_SEP . 'logs' . DIR_SEP . 'app.log',
     'overwrite_on_upload' => false,
     'timezone' => 'UTC', // https://www.php.net/manual/en/timezones.php
-    'download_inline' => ['pdf'],
+    'download_inline' => ['pdf'], // download inline in the browser, array of extensions, use * for all
 
     'frontend_config' => [
         'app_name' => 'FileGator',
+        'app_version' => APP_VERSION,
         'language' => 'english',
-        'logo' => 'https://via.placeholder.com/263x55.png',
-        'upload_max_size' => 2 * 1024 * 1024,
-        'upload_chunk_size' => 1 * 1024 * 1024,
+        'logo' => 'https://filegator.io/img/logo.png',
+        'upload_max_size' => 2 * 1024 * 1024, // 1MB
+        'upload_chunk_size' => 1 * 1024 * 1024, // 1MB
         'upload_simultaneous' => 3,
         'default_archive_name' => 'archive.zip',
         'editable' => ['.txt', '.css', '.js', '.ts', '.html', '.php', '.json', '.md'],
-        'date_format' => 'YY/MM/DD hh:mm:ss',
+        'date_format' => 'YY/MM/DD hh:mm:ss', // see: https://momentjs.com/docs/#/displaying/format/
         'guest_redirection' => '', // useful for external auth adapters
+        'search_simultaneous' => 5,
+        'filter_entries' => [],
     ],
 
     'services' => [
@@ -76,7 +84,7 @@ return [
             'handler' => '\Filegator\Services\Router\Router',
             'config' => [
                 'query_param' => 'r',
-                'routes_file' => __DIR__.'/../../backend/Controllers/routes.php',
+                'routes_file' => APP_ROOT_DIR . DIR_SEP . 'backend' . DIR_SEP . 'routes.config.php',
             ],
         ],
     ],

@@ -20,6 +20,12 @@ use Filegator\Services\Session\Session;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use Symfony\Component\HttpFoundation\Session\Storage\MockFileSessionStorage;
 
+define('DIR_SEP', DIRECTORY_SEPARATOR);
+define('APP_PUBLIC_PATH', '');
+define('APP_PUBLIC_DIR', __DIR__);
+define('APP_ROOT_DIR', dirname(dirname(__DIR__)));
+define('APP_VERSION', '7.6.0');
+
 define('APP_ENV', 'test');
 
 define('TEST_DIR', __DIR__.'/tmp');
@@ -102,7 +108,7 @@ class TestCase extends BaseTestCase
 
     public function getMockConfig()
     {
-        $config = require __DIR__.'/configuration.php';
+        $config = require __DIR__ . DIR_SEP . 'configuration.php';
 
         return new Config($config);
     }

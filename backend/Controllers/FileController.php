@@ -13,8 +13,8 @@ namespace Filegator\Controllers;
 use Filegator\Config\Config;
 use Filegator\Kernel\Request;
 use Filegator\Kernel\Response;
-use Filegator\Services\Archiver\ArchiverInterface;
 use Filegator\Services\Auth\AuthInterface;
+use Filegator\Services\Process\SymfonyProcessFactory;
 use Filegator\Services\Session\SessionStorageInterface as Session;
 use Filegator\Services\Storage\Filesystem;
 
@@ -112,34 +112,67 @@ class FileController
         return $response->json('Done');
     }
 
-    public function zipItems(Request $request, Response $response, ArchiverInterface $archiver)
+    public function zipItemsProc(Request $request, Response $response)
     {
         $items = $request->input('items', []);
         $destination = $request->input('destination', $this->separator);
+        $destination = $destination === '/' ? $destination : $destination . DIR_SEP;
         $name = $request->input('name', $this->config->get('frontend_config.default_archive_name'));
 
-        $archiver->createArchive($this->storage);
+        $pathPrefix = $this->config->get('repository_full_path');
+
+        $command[] = '/usr/bin/zip';
+        $command[] = '-r';
+        $command[] = $pathPrefix . $destination . $name;
 
         foreach ($items as $item) {
-            if ($item->type == 'dir') {
-                $archiver->addDirectoryFromStorage($item->path);
-            }
-            if ($item->type == 'file') {
-                $archiver->addFileFromStorage($item->path);
-            }
+            $command[] = $item->name;
         }
 
-        $archiver->storeArchive($destination, $name);
+        $archiverProcess = (new SymfonyProcessFactory())->createService($command);
+
+        $archiverProcess->setWorkingDirectory($pathPrefix . $destination);
+
+        $archiverProcess->start();
+
+        while ($archiverProcess->isRunning()) {
+            // waiting for process to finish
+        }
+
+        // executes after the command finishes
+        if (!$archiverProcess->isSuccessful()) {
+            //throw new ProcessFailedException($process);
+            return $response->json($archiverProcess->getOutput());
+        }
 
         return $response->json('Done');
     }
 
-    public function unzipItem(Request $request, Response $response, ArchiverInterface $archiver)
+    public function unzipItemProc(Request $request, Response $response)
     {
+        $pathPrefix = $this->config->get('repository_full_path');
+
         $source = $request->input('item');
         $destination = $request->input('destination', $this->separator);
 
-        $archiver->uncompress($source, $destination, $this->storage);
+        $command[] = '/usr/bin/unzip';
+        $command[] = $pathPrefix . $source;
+        $command[] = '-d';
+        $command[] = $pathPrefix . $destination;
+
+        $archiverProcess = (new SymfonyProcessFactory())->createService($command);
+
+        $archiverProcess->start();
+
+        while ($archiverProcess->isRunning()) {
+            // waiting for process to finish
+        }
+
+        // executes after the command finishes
+        if (!$archiverProcess->isSuccessful()) {
+            //throw new ProcessFailedException($process);
+            return $response->json($archiverProcess->getErrorOutput());
+        }
 
         return $response->json('Done');
     }

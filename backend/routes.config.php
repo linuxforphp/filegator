@@ -118,7 +118,7 @@ return [
     ],
     [
         'route' => [
-            'POST', '/zipitems', '\Filegator\Controllers\FileController@zipItems',
+            'POST', '/zipitems', '\Filegator\Controllers\FileController@zipItemsProc',
         ],
         'roles' => [
             'guest', 'user', 'admin',
@@ -129,7 +129,7 @@ return [
     ],
     [
         'route' => [
-            'POST', '/unzipitem', '\Filegator\Controllers\FileController@unzipItem',
+            'POST', '/unzipitem', '\Filegator\Controllers\FileController@unzipItemProc',
         ],
         'roles' => [
             'guest', 'user', 'admin',
@@ -195,7 +195,7 @@ return [
     ],
     [
         'route' => [
-            'POST', '/batchdownload', '\Filegator\Controllers\DownloadController@batchDownloadCreate',
+            'POST', '/batchdownload', '\Filegator\Controllers\DownloadController@batchDownloadCreateProc',
         ],
         'roles' => [
             'guest', 'user', 'admin',

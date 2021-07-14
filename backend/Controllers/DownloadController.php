@@ -14,8 +14,8 @@ use Filegator\Config\Config;
 use Filegator\Kernel\Request;
 use Filegator\Kernel\Response;
 use Filegator\Kernel\StreamedResponse;
-use Filegator\Services\Archiver\ArchiverInterface;
 use Filegator\Services\Auth\AuthInterface;
+use Filegator\Services\Process\SymfonyProcessFactory;
 use Filegator\Services\Session\SessionStorageInterface as Session;
 use Filegator\Services\Storage\Filesystem;
 use Filegator\Services\Tmpfs\TmpfsInterface;
@@ -116,25 +116,42 @@ class DownloadController
         $streamedResponse->send();
     }
 
-    public function batchDownloadCreate(Request $request, Response $response, ArchiverInterface $archiver)
+    public function batchDownloadCreateProc(Request $request, Response $response, TmpfsInterface $tmpfs)
     {
+        $uniqid = uniqid();
+
+        $tmpPath = $tmpfs->getFileLocation($uniqid);
+
         $items = $request->input('items', []);
 
-        $uniqid = $archiver->createArchive($this->storage);
+        $pathPrefix = $this->config->get('repository_full_path');
+
+        $command[] = '/usr/bin/zip';
+        $command[] = '-Ar';
+        $command[] = $tmpPath;
+
+        foreach ($items as $item) {
+            $command[] = substr($item->path, 1, strlen($item->path));
+        }
+
+        $archiverProcess = (new SymfonyProcessFactory())->createService($command);
+
+        $archiverProcess->setWorkingDirectory($pathPrefix);
+
+        $archiverProcess->start();
+
+        while ($archiverProcess->isRunning()) {
+            // waiting for process to finish
+        }
+
+        // executes after the command finishes
+        if (!$archiverProcess->isSuccessful()) {
+            //throw new ProcessFailedException($process);
+            return $response->json($archiverProcess->getOutput());
+        }
 
         // close session
         $this->session->save();
-
-        foreach ($items as $item) {
-            if ($item->type == 'dir') {
-                $archiver->addDirectoryFromStorage($item->path);
-            }
-            if ($item->type == 'file') {
-                $archiver->addFileFromStorage($item->path);
-            }
-        }
-
-        $archiver->closeArchive();
 
         return $response->json(['uniqid' => $uniqid]);
     }

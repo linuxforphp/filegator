@@ -522,14 +522,14 @@ class FilesTest extends TestCase
         $this->sendRequest('POST', '/zipitems', [
             'name' => 'compressed.zip',
             'items' => $items,
-            'destination' => '/john',
+            'destination' => '/',
         ]);
 
         $this->assertOk();
 
         $this->assertFileExists(TEST_REPOSITORY.'/a.txt');
         $this->assertFileExists(TEST_REPOSITORY.'/b.txt');
-        $this->assertFileExists(TEST_REPOSITORY.'/john/compressed.zip');
+        $this->assertFileExists(TEST_REPOSITORY.'/compressed.zip');
     }
 
     public function testZipFilesAndDirectories()
@@ -566,7 +566,7 @@ class FilesTest extends TestCase
         $this->sendRequest('POST', '/zipitems', [
             'name' => 'compressed2.zip',
             'items' => $items,
-            'destination' => '/jane',
+            'destination' => '/',
         ]);
 
         $this->assertOk();
@@ -574,7 +574,33 @@ class FilesTest extends TestCase
         $this->assertFileExists(TEST_REPOSITORY.'/a.txt');
         $this->assertFileExists(TEST_REPOSITORY.'/b.txt');
         $this->assertDirectoryExists(TEST_REPOSITORY.'/sub');
-        $this->assertFileExists(TEST_REPOSITORY.'/jane/compressed2.zip');
+        $this->assertFileExists(TEST_REPOSITORY.'/compressed2.zip');
+    }
+
+    public function testZipInvalidFilesReturnsErrorOutput()
+    {
+        $username = 'admin@example.com';
+        $this->signIn($username, 'admin123');
+
+        $items = [
+            0 => [
+                'type' => 'file',
+                'path' => '/missin.txt',
+                'name' => 'missina.txt',
+                'time' => $this->timestamp,
+            ],
+        ];
+
+        $this->sendRequest('POST', '/zipitems', [
+            'name' => 'compressed.zip',
+            'items' => $items,
+            'destination' => '/',
+        ]);
+
+        $this->assertEquals(
+            ['data' => "\tzip warning: name not matched: missina.txt\n\nzip error: Nothing to do! (try: zip -r /srv/tempo/tests/backend/tmp/repository/compressed.zip . -i missina.txt)\n"],
+            json_decode($this->response->getContent(), true)
+        );
     }
 
     public function testUnzipArchive()
@@ -598,6 +624,22 @@ class FilesTest extends TestCase
         $this->assertFileExists(TEST_REPOSITORY.'/jane/onetwo/three.txt');
     }
 
+    public function testUnzipInvalidFileReturnsErrorOutput()
+    {
+        $username = 'admin@example.com';
+        $this->signIn($username, 'admin123');
+
+        $this->sendRequest('POST', '/unzipitem', [
+            'item' => '/missin.zip',
+            'destination' => '/jane',
+        ]);
+
+        $this->assertEquals(
+            ['data' => "unzip:  cannot find or open /srv/tempo/tests/backend/tmp/repository/missin.zip, /srv/tempo/tests/backend/tmp/repository/missin.zip.zip or /srv/tempo/tests/backend/tmp/repository/missin.zip.ZIP.\n"],
+            json_decode($this->response->getContent(), true)
+        );
+    }
+
     public function testDownloadMultipleItems()
     {
         $username = 'john@example.com';
@@ -612,13 +654,13 @@ class FilesTest extends TestCase
         $items = [
             0 => [
                 'type' => 'dir',
-                'path' => '/johnsub',
+                'path' => '/john/johnsub',
                 'name' => 'johnsub',
                 'time' => $this->timestamp,
             ],
             1 => [
                 'type' => 'file',
-                'path' => '/john.txt',
+                'path' => '/john/john.txt',
                 'name' => 'john.txt',
                 'time' => $this->timestamp,
             ],
@@ -645,7 +687,37 @@ class FilesTest extends TestCase
         $this->assertEquals('application/octet-stream', $headers->get('content-type'));
         $this->assertEquals('attachment; filename=archive.zip', $headers->get('content-disposition'));
         $this->assertEquals('binary', $headers->get('content-transfer-encoding'));
-        $this->assertEquals(414, $headers->get('content-length'));
+        $this->assertEquals(662, $headers->get('content-length'));
+    }
+
+    public function testDownloadMultipleItemsInvalidFilesReturnsErrorOutput()
+    {
+        $username = 'john@example.com';
+        $this->signIn($username, 'john123');
+
+        $items = [
+            0 => [
+                'type' => 'dir',
+                'path' => '/missin/missinsub',
+                'name' => 'missinsub',
+                'time' => $this->timestamp,
+            ],
+            1 => [
+                'type' => 'file',
+                'path' => '/missin/fail.txt',
+                'name' => 'fail.txt',
+                'time' => $this->timestamp,
+            ],
+        ];
+
+        $this->sendRequest('POST', '/batchdownload', [
+            'items' => $items,
+        ]);
+
+        $this->assertStringContainsString(
+            "\tzip warning: name not matched: missin/missinsub\n\tzip warning: name not matched: missin/fail.txt\n\nzip error: Missing or empty zip file (/srv/tempo/tests/backend/tmp/temp",
+            json_decode($this->response->getContent(), true)['data']
+        );
     }
 
     public function testUpdateFileContent()
